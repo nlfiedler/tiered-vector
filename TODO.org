@@ -1,0 +1,42 @@
+* Tasks
+** Research
+*** ~Tiered Vectors~ (Goodrich 1998)
+**** uses l circular buffers of fixed size l
+**** dope vector of size l to index the circular buffers
+**** O(1) access/update
+**** O(√n) insert/delete
+*** ~Fast Dynamic Arrays~ (Bille 2017)
+**** seems like the overhead is significant?
+> 128 * 128 * 128
+2097152  // internal node slots
+
+> 64 * 64 * 64
+262144  // internal node slots
+
+> 64 * 64 * 64 * 16384
+4294967296
+
+> 2**32
+4294967296  // stored values
+
+> 128 * 128 * 128 * 8
+16777216  // size of pointers
+
+> 2**32 * 8
+34359738368  // size of u32 values
+**** suggested parameters for w and l
+***** 64-64-64-16384 = 4,294,967,296 (2^32) 2,097,152 bytes for internal nodes
+***** 128-128-128-2048 = 4,294,967,296 (2^32) 16,777,216 bytes for internal nodes
+***** 64-64-64-512 = 134,217,728 (2^27)
+***** experimentally, 64-64-64-512 works well for insert
+***** but the paper did not try wider nodes than that
+** testing
+*** add leak test example
+** benchmarks
+*** basic benchmark
+**** paper uses 100,000,000 32-bit integers in their benchmarks
+**** create collection of usize with values from 0 to 100,000,000
+**** randomly remove and insert an element, repeat many times
+*** TODO compare with https://github.com/PhilipCramer/Tiered-Vector/blob/main/src/lib.rs
+*** TODO compare with just =CyclicArray=
+*** TODO test with =Vec= for comparison
