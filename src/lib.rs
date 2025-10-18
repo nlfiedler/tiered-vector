@@ -445,12 +445,23 @@ impl<T> CyclicArray<T> {
         }
     }
 
+    /// Free the buffer for this cyclic array without dropping the elements.
+    fn dealloc(&mut self) {
+        // apparently this has no effect if capacity is zero
+        let layout = Layout::array::<T>(self.capacity).expect("unexpected overflow");
+        unsafe {
+            dealloc(self.buffer as *mut u8, layout);
+        }
+    }
+
     /// Take the elements from the two other cyclic arrays into a new cyclic
     /// array with the combined capacity.
     pub fn combine(a: CyclicArray<T>, b: CyclicArray<T>) -> Self {
         let mut this: CyclicArray<T> = CyclicArray::new(a.capacity + b.capacity);
         let mut this_pos = 0;
-        for other in [a, b] {
+        let their_a = std::mem::ManuallyDrop::new(a);
+        let their_b = std::mem::ManuallyDrop::new(b);
+        for mut other in [their_a, their_b] {
             if other.head + other.count > other.capacity {
                 // data wraps around, copy as two blocks
                 let src = unsafe { other.buffer.add(other.head) };
@@ -469,6 +480,7 @@ impl<T> CyclicArray<T> {
                 unsafe { std::ptr::copy(src, dst, other.count) }
                 this_pos += other.count;
             }
+            other.dealloc();
             this.count += other.count;
         }
         this
@@ -486,24 +498,26 @@ impl<T> CyclicArray<T> {
             }
             ptr
         };
-        if other.head + other.count > other.capacity {
+        let mut them = std::mem::ManuallyDrop::new(other);
+        if them.head + them.count > them.capacity {
             // data wraps around, copy as two blocks
-            let src = unsafe { other.buffer.add(other.head) };
-            let count_1 = other.capacity - other.head;
+            let src = unsafe { them.buffer.add(them.head) };
+            let count_1 = them.capacity - them.head;
             unsafe { std::ptr::copy(src, buffer, count_1) }
             let dst = unsafe { buffer.add(count_1) };
-            let count_2 = other.count - count_1;
-            unsafe { std::ptr::copy(other.buffer, dst, count_2) }
+            let count_2 = them.count - count_1;
+            unsafe { std::ptr::copy(them.buffer, dst, count_2) }
         } else {
             // data is contiguous, copy as one block
-            let src = unsafe { other.buffer.add(other.head) };
-            unsafe { std::ptr::copy(src, buffer, other.count) }
+            let src = unsafe { them.buffer.add(them.head) };
+            unsafe { std::ptr::copy(src, buffer, them.count) }
         }
+        them.dealloc();
         Self {
             buffer,
             capacity,
             head: 0,
-            count: other.count,
+            count: them.count,
         }
     }
 
@@ -511,20 +525,21 @@ impl<T> CyclicArray<T> {
     ///
     /// The second buffer may be empty if all elements fit within the first
     /// buffer.
-    pub fn split(mut self) -> (CyclicArray<T>, CyclicArray<T>) {
+    pub fn split(self) -> (CyclicArray<T>, CyclicArray<T>) {
         assert!(
             self.capacity.is_multiple_of(2),
             "capacity must be an even number"
         );
         let half = self.capacity / 2;
+        let mut me = std::mem::ManuallyDrop::new(self);
         let mut a: CyclicArray<T> = CyclicArray::new(half);
         let mut b: CyclicArray<T> = CyclicArray::new(half);
-        let mut remaining = self.count;
+        let mut remaining = me.count;
         for other in [&mut a, &mut b] {
             let mut other_pos = 0;
             while remaining > 0 && !other.is_full() {
-                let want_to_copy = if self.head + remaining > self.capacity {
-                    self.capacity - self.head
+                let want_to_copy = if me.head + remaining > me.capacity {
+                    me.capacity - me.head
                 } else {
                     remaining
                 };
@@ -534,15 +549,16 @@ impl<T> CyclicArray<T> {
                 } else {
                     want_to_copy
                 };
-                let src = unsafe { self.buffer.add(self.head) };
+                let src = unsafe { me.buffer.add(me.head) };
                 let dst = unsafe { other.buffer.add(other_pos) };
                 unsafe { std::ptr::copy(src, dst, to_copy) };
                 other_pos += to_copy;
                 other.count += to_copy;
-                self.head = self.physical_add(to_copy);
+                me.head = me.physical_add(to_copy);
                 remaining -= to_copy;
             }
         }
+        me.dealloc();
         (a, b)
     }
 
@@ -809,11 +825,7 @@ impl<T> IndexMut<usize> for CyclicArray<T> {
 impl<T> Drop for CyclicArray<T> {
     fn drop(&mut self) {
         self.clear();
-        // apparently this has no effect if capacity is zero
-        let layout = Layout::array::<T>(self.capacity).expect("unexpected overflow");
-        unsafe {
-            dealloc(self.buffer as *mut u8, layout);
-        }
+        self.dealloc();
     }
 }
 
@@ -1056,6 +1068,19 @@ mod tests {
         sorted.sort();
         for (idx, value) in (1..=size).enumerate() {
             assert_eq!(sorted[idx], value);
+        }
+    }
+
+    #[test]
+    fn test_vector_push_pop_strings() {
+        let mut array: Vector<String> = Vector::new();
+        for _ in 0..1024 {
+            let value = ulid::Ulid::new().to_string();
+            array.push(value);
+        }
+        assert_eq!(array.len(), 1024);
+        while let Some(s) = array.pop() {
+            assert!(!s.is_empty());
         }
     }
 
@@ -1769,6 +1794,20 @@ mod tests {
     }
 
     #[test]
+    fn test_cyclic_array_from_string() {
+        let mut sut = CyclicArray::<String>::new(4);
+        sut.push_back(ulid::Ulid::new().to_string());
+        sut.push_back(ulid::Ulid::new().to_string());
+        sut.push_back(ulid::Ulid::new().to_string());
+        let copy = CyclicArray::<String>::from(8, sut);
+        assert_eq!(copy.len(), 3);
+        assert_eq!(copy.capacity(), 8);
+        assert!(!copy[0].is_empty());
+        assert!(!copy[1].is_empty());
+        assert!(!copy[2].is_empty());
+    }
+
+    #[test]
     fn test_cyclic_array_from_smaller_1() {
         let mut sut = CyclicArray::<usize>::new(4);
         sut.push_back(1);
@@ -1833,6 +1872,24 @@ mod tests {
         assert_eq!(copy[0], 1);
         assert_eq!(copy[1], 2);
         assert_eq!(copy[2], 3);
+    }
+
+    #[test]
+    fn test_cyclic_array_combine_string() {
+        let mut a = CyclicArray::<String>::new(4);
+        a.push_back(ulid::Ulid::new().to_string());
+        a.push_back(ulid::Ulid::new().to_string());
+        a.push_back(ulid::Ulid::new().to_string());
+        let mut b = CyclicArray::<String>::new(4);
+        b.push_back(ulid::Ulid::new().to_string());
+        b.push_back(ulid::Ulid::new().to_string());
+        b.push_back(ulid::Ulid::new().to_string());
+        let sut = CyclicArray::combine(a, b);
+        assert_eq!(sut.len(), 6);
+        assert_eq!(sut.capacity(), 8);
+        for i in 0..6 {
+            assert!(!sut[i].is_empty());
+        }
     }
 
     #[test]
@@ -1931,6 +1988,27 @@ mod tests {
         assert_eq!(a.capacity(), 4);
         assert_eq!(b.len(), 0);
         assert_eq!(b.capacity(), 4);
+    }
+
+    #[test]
+    fn test_cyclic_array_split_string() {
+        let mut big = CyclicArray::<String>::new(8);
+        for _ in 0..8 {
+            big.push_back(ulid::Ulid::new().to_string());
+        }
+        let (a, b) = big.split();
+        assert_eq!(a.len(), 4);
+        assert_eq!(a.capacity(), 4);
+        assert!(!a[0].is_empty());
+        assert!(!a[1].is_empty());
+        assert!(!a[2].is_empty());
+        assert!(!a[3].is_empty());
+        assert_eq!(b.len(), 4);
+        assert_eq!(b.capacity(), 4);
+        assert!(!b[0].is_empty());
+        assert!(!b[1].is_empty());
+        assert!(!b[2].is_empty());
+        assert!(!b[3].is_empty());
     }
 
     #[test]

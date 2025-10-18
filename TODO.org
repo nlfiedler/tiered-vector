@@ -31,7 +31,8 @@
 ***** experimentally, 64-64-64-512 works well for insert
 ***** but the paper did not try wider nodes than that
 ** testing
-*** add leak test example
+*** DONE add leak test example
+*** DONE add tests using Strings
 ** benchmarks
 *** basic benchmark
 **** paper uses 100,000,000 32-bit integers in their benchmarks

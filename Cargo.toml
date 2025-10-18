@@ -1,5 +1,5 @@
 [package]
-name = "tiervec"
+name = "tiered-vector"
 version = "0.1.0"
 edition = "2024"
 authors = ["Nathan Fiedler <nathanfiedler@fastmail.fm>"]
