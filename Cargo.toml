@@ -20,3 +20,5 @@ exclude = ["TODO.org", "test/*"]
 [dev-dependencies]
 rand = "0.9.2"
 ulid = "1.2.1"
+# fails the iteration test
+# pcramer = { git = "https://github.com/PhilipCramer/Tiered-Vector.git", package = "tiered_vector" }

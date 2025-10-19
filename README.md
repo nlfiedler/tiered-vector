@@ -1,4 +1,4 @@
-# Tiered Vectors
+# Tiered Vector
 
 ## Overview
 
@@ -7,6 +7,10 @@ This Rust crate provides an implementation of a tiered vector as described in th
 * https://www.researchgate.net/publication/225174363_Tiered_Vectors_Efficient_Dynamic_Arrays_for_Rank-Based_Sequences
 
 This data structure supports efficient get and update operations with a running time of O(1) as well as insert and remove operations on the order of O(√N). It uses a collection of circular buffers to achieve this with a space overhead on the order of O(√N).
+
+## Performance
+
+Expect random remove/insert operations on a tiered vector to be orders of magnitude faster than a standard vector. Note that the benchmarks use different values because using an equal number for both data structures would take much too long.
 
 ## Examples
 
@@ -42,5 +46,15 @@ env RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address \
 
 ## References
 
-* \[1\]: [Tiered Vectors (1998)](https://cs.brown.edu/cgc/jdsl/papers/tiered-vector.pdf)
+* \[1\]: [Tiered Vector (1998)](https://cs.brown.edu/cgc/jdsl/papers/tiered-vector.pdf)
     - There is a 1999 version that lacks psuedo-code but is largely the same.
+
+## Other Implementations
+
+* [mettienne/tiered-vector](https://github.com/mettienne/tiered-vector)
+    - C++ templates variation by Bille, Christiansen, Ettienne, and Gørtz from their **Fast Dynamic Arrays** paper.
+* [PhilipCramer/Tiered-Vector](https://github.com/PhilipCramer/Tiered-Vector)
+    - Rust implementation with a different underlying structure.
+* [art-w/varray](https://github.com/art-w/varray) (OCaml)
+* [taitaisama/TieredVector](https://github.com/taitaisama/TieredVector) (D)
+* [layesUddin/Tiered-Vector](https://github.com/layesUddin/Tiered-Vector) (C)

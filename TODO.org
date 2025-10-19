@@ -38,6 +38,6 @@
 **** paper uses 100,000,000 32-bit integers in their benchmarks
 **** create collection of usize with values from 0 to 100,000,000
 **** randomly remove and insert an element, repeat many times
-*** TODO compare with https://github.com/PhilipCramer/Tiered-Vector/blob/main/src/lib.rs
-*** TODO compare with just =CyclicArray=
-*** TODO test with =Vec= for comparison
+*** TODO compare with https://github.com/PhilipCramer/Tiered-Vector
+**** has bugs and crashes
+*** DONE test with =Vec= for comparison
