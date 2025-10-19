@@ -8,7 +8,10 @@
 //! * DOI:10.1007/3-540-48447-7_21
 //!
 //! This implementation is based on the algorithms described in the 1998 version
-//! of the paper.
+//! of the paper titled **Tiered Vector** by the same authors. In short, the
+//! structure consists of a dope vector that references one or more circular
+//! buffers in which all buffers are full, with the exception of the last buffer
+//! which may be partially filled.
 //!
 //! # Memory Usage
 //!
@@ -20,7 +23,7 @@
 //!
 //! # Performance
 //!
-//! The performance and memory is as described in the paper: O(√N) space
+//! The performance and memory layout is as described in the paper: O(√N) space
 //! overhead, O(1) get and update operations, and O(√n) insert and remove.
 //!
 //! # Safety
@@ -38,7 +41,7 @@ use std::ops::{Index, IndexMut};
 pub struct Vector<T> {
     /// each deque is of size l = 2^k
     k: usize,
-    /// bit-mask to get the index into a cicular deque
+    /// bit-mask to get the index into a circular deque
     k_mask: usize,
     /// the 'l' value (2^k) cached for performance
     l: usize,
@@ -125,6 +128,10 @@ impl<T> Vector<T> {
     /// # Panics
     ///
     /// Panics if a new block is allocated that would exceed `isize::MAX` _bytes_.
+    ///
+    /// # Time complexity
+    ///
+    /// O(√N) in the worst case.
     pub fn push(&mut self, value: T) {
         self.insert(self.count, value);
     }
@@ -134,7 +141,7 @@ impl<T> Vector<T> {
     ///
     /// # Time complexity
     ///
-    /// Constant time.
+    /// O(√N) in the worst case.
     pub fn push_within_capacity(&mut self, value: T) -> Result<(), T> {
         if self.capacity() <= self.count {
             Err(value)
@@ -192,6 +199,10 @@ impl<T> Vector<T> {
 
     /// Removes an element from position `index` within the array, shifting some
     /// elements to the left as needed to close the gap.
+    ///
+    /// # Time complexity
+    ///
+    /// O(√N) in the worst case.
     pub fn remove(&mut self, index: usize) -> T {
         let len = self.count;
         if index > len {
@@ -226,6 +237,10 @@ impl<T> Vector<T> {
 
     /// Removes the last element from the vector and returns it, or `None` if the
     /// vector is empty.
+    ///
+    /// # Time complexity
+    ///
+    /// O(√N) in the worst case.
     pub fn pop(&mut self) -> Option<T> {
         if self.count > 0 {
             Some(self.remove(self.count - 1))
@@ -237,6 +252,10 @@ impl<T> Vector<T> {
     /// Removes and returns the last element from a vector if the predicate
     /// returns true, or `None`` if the predicate returns `false`` or the vector
     /// is empty (the predicate will not be called in that case).
+    ///
+    /// # Time complexity
+    ///
+    /// O(√N) in the worst case.
     pub fn pop_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         if self.count == 0 {
             None
