@@ -984,6 +984,27 @@ mod tests {
     }
 
     #[test]
+    fn test_vector_expand_and_compress() {
+        // add enough to cause multiple expansions
+        let mut sut = Vector::<usize>::new();
+        for value in 0..1024 {
+            sut.push(value);
+        }
+        assert_eq!(sut.len(), 1024);
+        assert_eq!(sut.capacity(), 1024);
+        // remove enough to cause multiple compressions
+        for _ in 0..960 {
+            sut.pop();
+        }
+        // ensure the correct elements remain
+        assert_eq!(sut.len(), 64);
+        assert_eq!(sut.capacity(), 64);
+        for value in 0..64 {
+            assert_eq!(sut[value], value);
+        }
+    }
+
+    #[test]
     fn test_vector_pop_small() {
         let mut sut = Vector::<usize>::new();
         assert!(sut.is_empty());
