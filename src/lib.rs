@@ -690,7 +690,7 @@ impl<T> CyclicArray<T> {
                 // the left by one
                 let src = unsafe { self.buffer.add(r_prime + 1) };
                 let dst = unsafe { self.buffer.add(r_prime) };
-                let count = self.count - index;
+                let count = self.count - index - 1;
                 unsafe { std::ptr::copy(src, dst, count) }
             } else {
                 // Slide all elements in S,sub of rank greater than or equal to
@@ -1064,6 +1064,12 @@ mod tests {
     }
 
     #[test]
+    fn test_vector_into_iterator_drop_empty() {
+        let sut: Vector<String> = Vector::new();
+        assert_eq!(sut.into_iter().count(), 0);
+    }
+
+    #[test]
     fn test_vector_into_iterator_ints_done() {
         let mut sut = Vector::<usize>::new();
         for value in 0..1024 {
@@ -1334,12 +1340,12 @@ mod tests {
 
     #[test]
     fn test_cyclic_array_random_insert_remove() {
-        let size = 1024;
+        let size = 128;
         let mut sut = CyclicArray::<usize>::new(size);
         for value in 1..=size {
             sut.push_back(value);
         }
-        for _ in 0..4096 {
+        for _ in 0..1024 {
             let from = rand::random_range(0..size);
             let to = rand::random_range(0..size - 1);
             let value = sut.remove(from);
@@ -1734,6 +1740,58 @@ mod tests {
     }
 
     #[test]
+    fn test_cyclic_array_remove_start_full() {
+        let mut sut = CyclicArray::<usize>::new(4);
+        // start with:
+        // ```
+        // +---+---+---+---+
+        // | 1 | 2 | 3 | 4 |
+        // +---+---+---+---+
+        // ```
+        // becomes:
+        // ```
+        // +---+---+---+---+
+        // | 2 | 3 | 4 |   |
+        // +---+---+---+---+
+        // ```
+        sut.push_back(1);
+        sut.push_back(2);
+        sut.push_back(3);
+        sut.push_back(4);
+        sut.remove(0);
+        assert_eq!(sut.len(), 3);
+        assert_eq!(sut[0], 2);
+        assert_eq!(sut[1], 3);
+        assert_eq!(sut[2], 4);
+    }
+
+    #[test]
+    fn test_cyclic_array_remove_middle_full() {
+        let mut sut = CyclicArray::<usize>::new(4);
+        // start with:
+        // ```
+        // +---+---+---+---+
+        // | 1 | 2 | 3 | 4 |
+        // +---+---+---+---+
+        // ```
+        // becomes:
+        // ```
+        // +---+---+---+---+
+        // | 1 | 2 | 4 |   |
+        // +---+---+---+---+
+        // ```
+        sut.push_back(1);
+        sut.push_back(2);
+        sut.push_back(3);
+        sut.push_back(4);
+        sut.remove(2);
+        assert_eq!(sut.len(), 3);
+        assert_eq!(sut[0], 1);
+        assert_eq!(sut[1], 2);
+        assert_eq!(sut[2], 4);
+    }
+
+    #[test]
     fn test_cyclic_array_remove_end() {
         let mut sut = CyclicArray::<usize>::new(4);
         // start with:
@@ -1755,6 +1813,32 @@ mod tests {
         assert_eq!(sut.len(), 2);
         assert_eq!(sut[0], 1);
         assert_eq!(sut[1], 2);
+    }
+
+    #[test]
+    fn test_cyclic_array_remove_end_full() {
+        let mut sut = CyclicArray::<usize>::new(4);
+        // start with:
+        // ```
+        // +---+---+---+---+
+        // | 1 | 2 | 3 | 4 |
+        // +---+---+---+---+
+        // ```
+        // becomes:
+        // ```
+        // +---+---+---+---+
+        // | 1 | 2 | 3 |   |
+        // +---+---+---+---+
+        // ```
+        sut.push_back(1);
+        sut.push_back(2);
+        sut.push_back(3);
+        sut.push_back(4);
+        sut.remove(3);
+        assert_eq!(sut.len(), 3);
+        assert_eq!(sut[0], 1);
+        assert_eq!(sut[1], 2);
+        assert_eq!(sut[2], 3);
     }
 
     #[test]

@@ -36,12 +36,20 @@ The Rust edition is set to `2024` and hence version `1.85.0` is the minimum supp
 
 ### Memory Leaks
 
-Finding memory leaks with [Address Sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html) is fairly [easy](https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html) and seems to work best on Linux. The shell script below gives a quick demonstration of running one of the examples with ASAN analysis enabled.
+Finding memory leaks with [Address Sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html) is fairly [easy](https://doc.rust-lang.org/beta/unstable-book/compiler-flags/sanitizer.html) and seems to work best on Linux. A Docker container with bash access and [Rust](https://rust-lang.org) nightly installed can be found in the `containers` directory.
 
 ```shell
-#!/bin/sh
-env RUSTDOCFLAGS=-Zsanitizer=address RUSTFLAGS=-Zsanitizer=address \
-    cargo run -Zbuild-std --target x86_64-unknown-linux-gnu --release --example leak_test
+cd containers
+docker compose build --pull
+docker compose run leaktest
+sh leak.sh
+```
+
+If no problems were detected, a single line of output will appear. When done, clean up the docker artifacts.
+
+```shell
+exit
+docker compose down
 ```
 
 ## References
